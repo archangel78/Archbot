@@ -1,9 +1,9 @@
 {
-    "usdt_amount": 1000.0,
+    "usdt_amount": 1000,
     "portfolio_worth": 1000,
     "tickers": [
         "BTCUSDT",
-        "ETHUSDT",
+        "ETHUSDT",  
         "ADAUSDT",
         "WRXUSDT",
         "SOLUSDT"
@@ -22,7 +22,5 @@
         "False",
         "False"
     ],
-    "trades": [
-        
-    ]
+    "trades": []
 }
