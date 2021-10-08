@@ -5,6 +5,7 @@ import json
 import config
 import socket
 import optparse
+import requests.exceptions
 from time import sleep
 from threading import Thread
 from numpy import genfromtxt
@@ -61,7 +62,9 @@ def get_data(ticker):
             candle_stick_writer.writerow(candle)
         csvfile.close()
     except socket.timeout:
-        log_data("[*] "+ticker+" socket timed out. skipping iteration")
+        print("[*] "+ticker+" socket timed out. skipping iteration")
+    except requests.exceptions.Timeout:
+        print("[*] "+ticker+" socket timed out. skipping iteration")
 
 def check_rsi(ticker,ticker_id):
     if not continue_trading:
@@ -71,12 +74,12 @@ def check_rsi(ticker,ticker_id):
     rsi_indicator = talib.RSI(closes,config.RSI_TIMEPERIOD)
     log_data("[*] "+ticker+": ", "high")
     log_data("\t- Current RSI value: "+str(rsi_indicator[-1]),"high")
-    if(rsi_indicator[-1] >= 62):
+    if(rsi_indicator[-1] >= config.RSI_UPPER_POINT):
         print("\t- Rsi indicator indicates that "+ticker+" is in overbought region")
         if token_currently_in_portfolio[ticker_id]=="True":
             print("\t- Selling existing assets of "+ticker,"high")
             sell(ticker, ticker_id)
-    elif(rsi_indicator[-1] <= 35):
+    elif(rsi_indicator[-1] <= config.RSI_LOWER_POINT):
         log_data("\t- Rsi indicator indicates that "+ticker+" is in oversold region","high")
         if not buy_flag:
             return
@@ -117,8 +120,12 @@ def write_trade(ticker, trade_type, trade_price, ticker_id, asset_worth):
         outputFile.write(str(trade_file_data).replace("\'","\""))
 
 def get_ticker(ticker_string):
-    ticker = client.get_symbol_ticker(symbol=ticker_string)
-    return ticker
+    try:
+        ticker = client.get_symbol_ticker(symbol=ticker_string)
+        return ticker
+    except socket.timeout:
+        print("[*] "+ticker_string+" socket timed out. skipping iteration")
+
 
 def start_trading(ticker,ticker_id):
     print("[*] Trading started with the following ticker: "+ticker)
@@ -190,13 +197,14 @@ def input_commands():
             else:
                 print("[*] Continuing trading")
         elif(command == "QUIT"):
-            choice = input("[*] Quiting without selling assets. To sell all assets in portfolio, run \"python3 bot.py -s\" ")
+            print("[*] Quiting without selling assets. To sell all assets in portfolio, run \"python3 bot.py -s\" ")
             exit_trading = True
             exit()
         elif(command == "STOP_BUYING"):
             print("[*] No more buy orders will be executed. The program will continue to run untill all assets are sold")
             buy_flag = False
             continue_trading = True
+            exit()
 
 def get_command_line_arguments():
     cmd_parser = optparse.OptionParser()
@@ -220,6 +228,9 @@ def do_commands(options):
             reset_trades_file()
         else:
             print("[*] Exiting ... ")
+        exit()
+    elif(options.sell_all):
+        sell_all()
         exit()
     elif(options.verbose and not options.start_trading):
         print("[*] Nothing to do. Use \"-t\" to start trading: python3 bot.py -t -v")
