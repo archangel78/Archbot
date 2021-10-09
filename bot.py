@@ -1,9 +1,10 @@
 import os
-import csv
-import talib
 import json
-import config
+import time
+import talib
+import numpy
 import socket
+import config
 import optparse
 import requests.exceptions
 from time import sleep
@@ -51,27 +52,45 @@ def sell_all():
         if(currently_holding_boolean[i] == "True"):
             sell(trade_file_data["tickers"][i], i)
 
-def get_data(ticker):
+def get_closes(ticker):
     if not continue_trading:
         return
     try:
+        closes = []    
         candle_sticks = client.get_historical_klines(ticker, Client.KLINE_INTERVAL_1MINUTE, config.DATA_POINT_PERIOD)
-        csvfile = open("priceDataFiles/"+ticker+"_priceData.csv","w",newline="")
-        candle_stick_writer = csv.writer(csvfile, delimiter=",")
         for candle in candle_sticks:
-            candle_stick_writer.writerow(candle)
-        csvfile.close()
+            closes.append(candle[4])
+        with open ("priceDataFiles/"+ticker+"_priceData.json", "w") as outputFile:
+            outputFile.write(str(closes).replace("\'","\""))
     except socket.timeout:
         print("[*] "+ticker+" socket timed out. skipping iteration")
     except requests.exceptions.Timeout:
         print("[*] "+ticker+" socket timed out. skipping iteration")
+    except requests.exceptions.ConnectionError:
+        print("[*] "+ticker+" socket timed out. skipping iteration")
+
+def get_last_closes(ticker_string):
+    price_file = open("priceDataFiles/"+ticker_string+"_priceData.json")
+    closes_list = [float(close) for close in json.load(price_file)]
+    klines = client.get_historical_klines(ticker_string, Client.KLINE_INTERVAL_1MINUTE, "6 minute ago UTC")
+    i = -1
+    while closes_list[i]!=float(klines[0][4]):
+        i = i -1
+    closes_list = closes_list[:i]
+    for candle in klines:
+        closes_list.append(float(candle[4]))
+
+    with open ("priceDataFiles/"+ticker_string+"_priceData.json", "w") as outputFile:
+        outputFile.write(str(closes_list).replace("\'","\""))
 
 def check_rsi(ticker,ticker_id):
     if not continue_trading:
         return
-    csv_data = genfromtxt("priceDataFiles/"+ticker+"_priceData.csv", delimiter=",")
-    closes = csv_data[:,4]
-    rsi_indicator = talib.RSI(closes,config.RSI_TIMEPERIOD)
+    price_file = open("priceDataFiles/"+ticker+"_priceData.json")
+    closes_list = [float(close) for close in json.load(price_file)]
+    closes_array = numpy.array(closes_list)
+    rsi_indicator = talib.RSI(closes_array,config.RSI_TIMEPERIOD)
+
     log_data("[*] "+ticker+": ", "high")
     log_data("\t- Current RSI value: "+str(rsi_indicator[-1]),"high")
     if(rsi_indicator[-1] >= config.RSI_UPPER_POINT):
@@ -124,19 +143,26 @@ def get_ticker(ticker_string):
         ticker = client.get_symbol_ticker(symbol=ticker_string)
         return ticker
     except socket.timeout:
-        print("[*] "+ticker_string+" socket timed out. skipping iteration")
+        print("[*] "+ticker_string+" socket timed out")
 
 
 def start_trading(ticker,ticker_id):
     print("[*] Trading started with the following ticker: "+ticker)
+    get_closes(ticker)
+    wait_time = 59
     while 1:
         if(exit_trading or (not buy_flag and token_currently_in_portfolio[ticker_id]=="False")):
             print("[*] Stopping trading with "+ticker)
             exit()
         if(continue_trading):
-            get_data(ticker)
+            begin = time.time()
+            get_last_closes(ticker)
             check_rsi(ticker,ticker_id)
-        sleep(10)
+            end = time.time()
+            wait_time = 60 - (end - begin)
+            sleep(wait_time)
+        else:
+            sleep(1)
 
 def log_data(string, verbosity):
     if(verbosity=="high" and verbose):
@@ -193,11 +219,14 @@ def input_commands():
                 print("[*] Selling all assets")
                 sell_all()
                 exit_trading = True
+                os.system("rm -r priceDataFiles")
                 exit()
             else:
                 print("[*] Continuing trading")
+                continue_trading = True
         elif(command == "QUIT"):
             print("[*] Quiting without selling assets. To sell all assets in portfolio, run \"python3 bot.py -s\" ")
+            os.system("rm -r priceDataFiles")
             exit_trading = True
             exit()
         elif(command == "STOP_BUYING"):
@@ -205,6 +234,10 @@ def input_commands():
             buy_flag = False
             continue_trading = True
             exit()
+        else:
+            print("[*] Invalid command, continuing trades")
+            continue_trading = True
+
 
 def get_command_line_arguments():
     cmd_parser = optparse.OptionParser()
