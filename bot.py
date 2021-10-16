@@ -14,12 +14,12 @@ from binance.client import Client
 
 verbose = False
 buy_flag = True
-total_usdt = 1000
 usdt_amount = 0
 continue_trading = True
 exit_trading = False
 
 threads = []
+log_data = []
 asset_amount = []
 token_currently_in_portfolio = []
 client = Client(config.API_KEY, config.API_SECRET)
@@ -28,7 +28,11 @@ def buy(buy_ticker,ticker_id):
     global usdt_amount, asset_amount
     ticker = get_ticker(buy_ticker)
     last_price = float(ticker["price"])
-    asset_amount[ticker_id] = (total_usdt/len(config.TICKERS))/last_price
+    divide_no = 0
+    for i in token_currently_in_portfolio:
+        if(i=="False"):
+            divide_no = divide_no + 1
+    asset_amount[ticker_id] = (usdt_amount/divide_no)/last_price
     asset_worth = asset_amount[ticker_id]*last_price
     usdt_amount = usdt_amount - asset_worth
     token_currently_in_portfolio[ticker_id] = "True"
@@ -94,7 +98,7 @@ def check_rsi(ticker,ticker_id):
     log_data("[*] "+ticker+": ", "high")
     log_data("\t- Current RSI value: "+str(rsi_indicator[-1]),"high")
     if(rsi_indicator[-1] >= config.RSI_UPPER_POINT):
-        print("\t- Rsi indicator indicates that "+ticker+" is in overbought region")
+        log_data("\t- Rsi indicator indicates that "+ticker+" is in overbought region")
         if token_currently_in_portfolio[ticker_id]=="True":
             print("\t- Selling existing assets of "+ticker,"high")
             sell(ticker, ticker_id)
@@ -123,11 +127,11 @@ def write_trade(ticker, trade_type, trade_price, ticker_id, asset_worth):
     if(trade_type=="Buy"):
         current_trade["buying_price"] = trade_price
         current_trade["amount_bought"] = asset_amount[ticker_id]
-        print("\t- Buying price: "+str(trade_price)+"\n\t- Amount bought: "+str(asset_amount[ticker_id]))
+        print("\t- Buying price: "+str(trade_price)+"\n\t- asset bought: "+str(asset_amount[ticker_id])+"\n\t- amount: "+str(asset_amount[ticker_id]*trade_price)+" usdt")
     else:
         current_trade["selling_price"] = trade_price
         current_trade["amount_sold"] = asset_worth/trade_price
-        print("\t- Selling price: "+str(trade_price)+"\n\t- Amount sold: "+str(asset_worth))
+        print("\t- Selling price: "+str(trade_price)+"\n\t- asset sold: "+str(asset_worth/trade_price)+"\n\t- amount sold: "+str(asset_worth)+" usdt")
         
     current_trade["asset_worth"] = asset_worth
     trade_file_data["trades"].append(current_trade)
@@ -209,7 +213,7 @@ def input_commands():
     global continue_trading, exit_trading, buy_flag
     while 1:
         command = input().upper()
-        print("[*] Command Executed, please wait 45 seconds ... ")
+        print("[*] Command Entered, please wait 45 seconds ... ")
         continue_trading = False
         sleep(45)
 
@@ -237,7 +241,6 @@ def input_commands():
         else:
             print("[*] Invalid command, continuing trades")
             continue_trading = True
-
 
 def get_command_line_arguments():
     cmd_parser = optparse.OptionParser()
