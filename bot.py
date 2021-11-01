@@ -98,7 +98,7 @@ def check_rsi(ticker,ticker_id):
     log_data("[*] "+ticker+": ", "high")
     log_data("\t- Current RSI value: "+str(rsi_indicator[-1]),"high")
     if(rsi_indicator[-1] >= config.RSI_UPPER_POINT):
-        log_data("\t- Rsi indicator indicates that "+ticker+" is in overbought region")
+        log_data("\t- Rsi indicator indicates that "+ticker+" is in overbought region","high")
         if token_currently_in_portfolio[ticker_id]=="True":
             print("\t- Selling existing assets of "+ticker,"high")
             sell(ticker, ticker_id)
@@ -107,7 +107,7 @@ def check_rsi(ticker,ticker_id):
         if not buy_flag:
             return
         if token_currently_in_portfolio[ticker_id]=="False":
-            print("\t- Buying assets of "+ticker)
+            print("[#]- Buying assets of "+ticker)
             buy(ticker, ticker_id)
     else:
         log_data("\t- Rsi indicator suggests that "+ticker+" is currently neutral, waiting for optimal entry/exit","high")
@@ -131,7 +131,7 @@ def write_trade(ticker, trade_type, trade_price, ticker_id, asset_worth):
     else:
         current_trade["selling_price"] = trade_price
         current_trade["amount_sold"] = asset_worth/trade_price
-        print("\t- Selling price: "+str(trade_price)+"\n\t- asset sold: "+str(asset_worth/trade_price)+"\n\t- amount sold: "+str(asset_worth)+" usdt")
+        print("[#] Selling price: "+str(trade_price)+"\n\t- asset sold: "+str(asset_worth/trade_price)+"\n\t- amount sold: "+str(asset_worth)+" usdt")
         
     current_trade["asset_worth"] = asset_worth
     trade_file_data["trades"].append(current_trade)
@@ -184,6 +184,7 @@ def reset_trades_file():
     trade_file_data["currently_holding_amount"] = []
     trade_file_data["currently_holding_boolean"] = []
     trade_file_data["trades"] = []
+    trade_file_data["usdt_amount"] = client.get_asset_balance("USDT")["free"]
 
     for ticker in config.TICKERS:
         trade_file_data["tickers"].append(ticker)
@@ -198,7 +199,7 @@ def get_trades_data():
     trade_file = open("trades.json")
     trade_file_data = json.load(trade_file)
     asset_amount = trade_file_data["currently_holding_amount"]
-    usdt_amount = trade_file_data["usdt_amount"]
+    usdt_amount = int(float(trade_file_data["usdt_amount"]))
     token_currently_in_portfolio = trade_file_data["currently_holding_boolean"]
 
 def create_ticker_threads():
@@ -281,6 +282,7 @@ def do_commands(options):
         create_ticker_threads()
     else:
         print("[*] Nothing to do. Use \"-t\" to start trading: python3 bot.py -t")
+
 
 if __name__=="__main__":
     options = get_command_line_arguments()

@@ -4,8 +4,13 @@ API_KEY = os.getenv("API_KEY")
 API_SECRET = os.getenv("API_SECRET")
 
 #The coins or tokens which the bot will trade with
-TICKERS=["BTCUSDT","ETHUSDT","ADAUSDT","WRXUSDT","SOLUSDT"]
-#The trading bot settings. I recommend not messing with them unless you know what you're doing
+TICKERS=["BTCUSDT","ETHUSDT","LTCUSDT"]
+
+#Amount to paper trade with. amount in usdt 
+paper_trading_amount = 1000
+
+#Everything below are the trading bot settings. 
+# I recommend not messing with them unless you know what you're doing
 
 #The timeperiod in which the bot gets candlestick data. 
 # The lower the value, more the amount of trades that will happen. 
@@ -19,8 +24,8 @@ RSI_TIMEPERIOD=14
 #The lower limit of RSI. 
 #If rsi of an asset reaches below this value, a buy order will be executed. 
 #Typically, a value below 30 indicates that an asset is in oversold region (Good buying opportunity)
-RSI_LOWER_POINT=45
+RSI_LOWER_POINT=50
 #The upper limit of RSI. 
 #If rsi of an asset reaches above this value, a sell order will be executed (assuming that asset is already in portfolio). 
 #Typically, a value above 70 indicates that an asset is in overbought region (Good selling opportunity)
-RSI_UPPER_POINT=62
+RSI_UPPER_POINT=55
